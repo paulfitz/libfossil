@@ -16,14 +16,7 @@ if [ ! -e fossil ] ; then
     mkdir -p fossil
     cd fossil
     fossil open ../fossil.fossil
-fi
-
-if [ ! -e fossil/fossil ] ; then
-    cd fossil
-    echo "Building fossil sources..."
     ./configure
-    make
-    cd $base
 fi
 
-echo "Ok, we have fossil sources, and a successful build. Time to play!"
+echo "Ok, we have fossil sources, configured. Time to play!"
