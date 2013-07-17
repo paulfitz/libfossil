@@ -61,6 +61,27 @@
   }
 }
 
+%extend Stmt {
+  Stmt() {
+    Stmt *s;
+    s = (Stmt *) malloc(sizeof(Stmt));
+    s->sql.nUsed = 0;
+    s->sql.nAlloc = 0;
+    s->sql.iCursor = 0;
+    s->sql.aData = 0;
+    s->sql.xRealloc = blobReallocMalloc;
+    s->pStmt = 0;
+    s->pNext = s->pPrev = 0;
+    s->nStep = 0;
+    return s;
+  }
+
+  ~Stmt() {
+    db_finalize($self);
+    free($self);
+  }
+}
+
 %apply (int ARGC, char **ARGV) { (int argc, char **argv) } 
 %inline {
   int main(int argc, char **argv) {
@@ -75,5 +96,13 @@
     g.argv = argv;
     sqlite3_initialize();
     return 0;
+  }
+  
+  int db_prepare1(Stmt *pStmt, const char *txt) {
+    return db_prepare(pStmt,txt);
+  }
+
+  int db_is_row(int x) {
+    return x == SQLITE_ROW;
   }
 }

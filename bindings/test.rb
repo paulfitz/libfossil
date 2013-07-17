@@ -21,21 +21,26 @@ def fossil(args)
   Process.waitpid(make_a_repo)
 end
 
-unless File.exist? "data.csv"
+unless File.exist? "test.fossil"
   File.open("data.csv","w") do |file|
     file.write("NAME,AGE\n")
     file.write("Bob,99\n")
     file.write("Sam,156\n")
   end
-end
-
-unless File.exist? "test.fossil"
+  File.open("data2.csv","w") do |file|
+    file.write("NAME,AGE,MORE\n")
+    file.write("Bob,99,frogs\n")
+    file.write("Sam,156,space\n")
+  end
   fossil(["new","test.fossil"])
   fossil(["open","test.fossil"])
   fossil(["add","data.csv"]);
   fossil(["commit","-m","add some test data"]);
-  # fossil(["close"]) # not yet, unpatched fossil won't let us access
-  # files without a tree - fix is easy but not yet offered upstream
+  fossil(["add","data2.csv"]);
+  fossil(["commit","-m","add some more test data"]);
+  fossil(["close"])
+  File.delete "data.csv"
+  File.delete "data2.csv"
 end
 
 
@@ -48,6 +53,23 @@ puts "return code from historical_version_of_file is #{rc}"
 if rc==0
   puts "failure, miserable failure"
 end
+
+puts "Here is the current state of one test file:"
 puts blob
+Fossil::historical_version_of_file("tip","data2.csv",blob,nil,nil,nil,0)
+puts "Here is the current state of another test file:"
+puts blob
+
+# Hmm, looks like we basically do SQL queries at this point,
+# no real need to wrap things up.
+
+puts "Looking at history of data.csv"
+q = Fossil::Stmt.new
+Fossil::db_prepare1(q,"SELECT datetime(event.mtime,'localtime'), coalesce(event.ecomment, event.comment), coalesce(event.euser, event.user), mlink.pid, mlink.fid, (SELECT uuid FROM blob WHERE rid=mlink.fid) FROM mlink, event WHERE mlink.fnid IN (SELECT fnid FROM filename WHERE name='data.csv') AND event.objid=mlink.mid ORDER BY event.mtime DESC;")
+while Fossil::db_is_row(Fossil::db_step(q))==1
+  msg = Fossil::db_column_text(q,1)
+  id = Fossil::db_column_int(q,3)
+  puts "COMMIT MESSAGE: #{msg} // #{id}"
+end
 
 # probably need to close some things down?
